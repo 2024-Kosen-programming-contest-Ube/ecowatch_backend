@@ -1,5 +1,5 @@
 [package]
-name = "eco2class_backend"
+name = "ecowatch_backend"
 version = "0.1.0"
 edition = "2021"
 
