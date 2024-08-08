@@ -6,7 +6,7 @@ static POOL: OnceCell<SqlitePool> = OnceCell::const_new();
 
 pub async fn init() {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    if Sqlite::database_exists(&database_url)
+    if !Sqlite::database_exists(&database_url)
         .await
         .expect("Failed to check database exists.")
     {
