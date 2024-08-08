@@ -1,0 +1,22 @@
+@startuml
+entity classroom {
+  id
+  --
+  name
+  password_hash
+}
+
+entity day_status {
+  class_id
+  point
+  attend
+}
+
+entity sensor_log {
+  class_id
+  time
+}
+
+classroom ||..|{ day_status
+classroom ||..|{ sensor_log
+@enduml
