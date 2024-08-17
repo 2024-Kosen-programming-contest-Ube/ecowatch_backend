@@ -1,22 +1,70 @@
-@startuml
+@startuml database
+
 entity classroom {
-  id
+  id: TEXT
   --
-  name
-  password_hash
+  school_id: TEXT
+  grade: INTEGER
+  class_name: TEXT
+  password_hash: TEXT
+}
+
+entity teacher {
+  id: TEXT
+  --
+  class_id: TEXT
+  password_hash: TEXT
 }
 
 entity day_status {
-  class_id
-  point
-  attend
+  class_id: TEXT
+  point: INTEGER
+  attend: TEXT
 }
 
 entity sensor_log {
-  class_id
-  time
+  class_id: TEXT
+  time: TEXT(datetime)
+}
+
+entity checklist {
+  student_id(出席番号): TEXT
+  class_id: TEXT
+  list: TEXT(json)
+}
+
+entity point_log {
+  class_id: TEXT
+  date: TEXT(date)
+}
+
+entity class_token {
+  token: TEXT
+  --
+  class_id: TEXT
+  expired_time: TEXT(time)
+}
+
+entity teacher_token {
+  token: TEXT
+  --
+  teacher_id: TEXT
+  expired_time: TEXT(time)
+}
+
+entity student_token {
+  token: TEXT
+  --
+  student_id(出席番号): TEXT
+  class_id: TEXT
+  expired_time: TEXT(time)
 }
 
 classroom ||..|{ day_status
 classroom ||..|{ sensor_log
+classroom ||..|{ point_log
+
+classroom ||..|{ class_token
+teacher ||..|{ teacher_token
+
 @enduml
