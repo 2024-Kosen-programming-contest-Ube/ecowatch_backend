@@ -60,10 +60,9 @@ jobs:
           cp -r ${{ github.workspace }}/db/migrations ./artifact/db/
           cp ${{ github.workspace }}/example.env ./artifact/
           cd ./artifact/
-          zip -r ${{ matrix.asset_name }}.zip ./*
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}.zip
-          path: ${{ github.workspace }}/artifact/${{ matrix.asset_name }}.zip
+          path: ${{ github.workspace }}/artifact/*
