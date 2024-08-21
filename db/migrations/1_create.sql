@@ -5,6 +5,6 @@ CREATE TABLE sensor_log("class_id" TEXT, "time" TEXT, "values" TEXT);
 CREATE TABLE teacher("id" TEXT, "class_id" TEXT, "email" TEXT, "password_hash" TEXT);
 CREATE TABLE checklist("class_id" TEXT, "student_id" TEXT, list TEXT);
 
-CREATE TABLE class_token("token" TEXT, "class_id" TEXT, "expired_time" TEXT);
-CREATE TABLE teacher_token("token" TEXT, "teacher_id" TEXT, "expired_time" TEXT);
-CREATE TABLE student_token("token" TEXT, "student_id" TEXT, "class_id" TEXT, "expired_time" TEXT);
+CREATE TABLE class_token("token" TEXT UNIQUE, "class_id" TEXT);
+CREATE TABLE teacher_token("token" TEXT UNIQUE, "teacher_id" TEXT);
+CREATE TABLE student_token("token" TEXT UNIQUE, "student_id" TEXT, "class_id" TEXT);
