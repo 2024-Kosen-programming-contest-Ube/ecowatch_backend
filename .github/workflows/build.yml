@@ -52,5 +52,29 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }}
 
+      - name: Copy artifact files
+        run: |
+          mkdir ./artifact
+          mkdir ./artifact/db
+          cp ${{ github.workspace }}/target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ./artifact/
+          cp -r ${{ github.workspace }}/db/migrations ./artifact/db/
+          cp ${{ github.workspace }}/example.env ./artifact/
+
+      - name: Package for windows
+        if: ${{ matrix.target }} == 'x86_64-pc-windows-gnu'
+        run: |
+          powershell Compress-Archive -Path ./artifact/* -DestinationPath ${{ matrix.asset_name }}.zip
+
+      - name: Package for Linux
+        if: ${{ matrix.target }} != 'x86_64-pc-windows-gnu'
+        run: |
+          zip -r ${{ matrix.asset_name }}.zip ./artifact/*
+
       - name: Check result
-        run: ls -la ${{ github.workspace }}/target/${{ matrix.target }}/release/
+        run: ls -la ${{ github.workspace }}/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}.zip
+          path: ${{ github.workspace }}/${{ matrix.asset_name }}.zip
