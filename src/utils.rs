@@ -1,7 +1,9 @@
 use anyhow::Result;
 use argon2::password_hash::SaltString;
-use argon2::{Algorithm, Argon2, Params, PasswordHasher};
+use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier};
 use bytes::{Buf, Bytes};
+use cookie::time::Duration;
+use cookie::Cookie;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Empty, Full};
 use hyper::{header, Request, Response, StatusCode};
@@ -70,6 +72,22 @@ pub fn response_error_message(
     let res = ResponseErrorMessage { error: msg };
     let json = serde_json::to_string(&res)?;
     response_json(status, json)
+}
+
+pub fn verify_password(password: String, hash: String) -> Result<bool> {
+    let expected_password_hash = PasswordHash::new(hash.as_str())?;
+    let result = Argon2::default().verify_password(password.as_bytes(), &expected_password_hash);
+    Ok(result.is_ok())
+}
+
+pub fn create_cookie(key: String, value: String) -> String {
+    let cookie = Cookie::build((key, value))
+        .path("/")
+        .secure(false)
+        .http_only(true)
+        .max_age(Duration::days(365))
+        .build();
+    cookie.encoded().to_string()
 }
 
 pub fn check_db_error(

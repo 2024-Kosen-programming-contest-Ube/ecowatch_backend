@@ -7,13 +7,14 @@ use crate::utils;
 
 mod classroom;
 
-use classroom::handler_create;
+use classroom::{handler_create, handler_login};
 
 pub async fn route(
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
     match (req.method(), req.uri().path()) {
         (&Method::POST, "/classroom/create") => handler_create(req).await,
+        (&Method::POST, "/classroom/login") => handler_login(req).await,
 
         // Return the 404 Not Found for other routes.
         _ => utils::response_empty(StatusCode::NOT_FOUND),
