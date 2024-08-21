@@ -1,4 +1,4 @@
-use dotenv;
+use dotenvy;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
@@ -11,7 +11,7 @@ mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    dotenv::dotenv().expect("Failed to read .env file");
+    dotenvy::dotenv().expect("Failed to read .env file");
 
     database::init().await;
 
