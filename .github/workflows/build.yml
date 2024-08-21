@@ -61,12 +61,12 @@ jobs:
           cp ${{ github.workspace }}/example.env ./artifact/
 
       - name: Package for windows
-        if: ${{ matrix.target }} == 'x86_64-pc-windows-gnu'
+        if: matrix.target == 'x86_64-pc-windows-gnu'
         run: |
           powershell Compress-Archive -Path ./artifact/* -DestinationPath ${{ matrix.asset_name }}.zip
 
       - name: Package for Linux
-        if: ${{ matrix.target }} != 'x86_64-pc-windows-gnu'
+        if: matrix.target != 'x86_64-pc-windows-gnu'
         run: |
           zip -r ${{ matrix.asset_name }}.zip ./artifact/*
 
