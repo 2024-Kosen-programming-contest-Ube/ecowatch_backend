@@ -32,6 +32,16 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
+      - name: Install sqlx-cli
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: sqlx-cli
+
+      - name: Setup database
+        run: |
+          sqlx migrate add create
+          sqlx migrate run --source ./db/migrations
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
