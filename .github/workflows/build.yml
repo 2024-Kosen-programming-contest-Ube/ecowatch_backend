@@ -32,10 +32,6 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
-      - uses: taiki-e/cache-cargo-install-action@v2
-        with:
-          tool: tauri-cli
-
       - name: Build
         uses: actions-rs/cargo@v1
         with:
