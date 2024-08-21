@@ -1,0 +1,47 @@
+name: Build for Raspberry Pi 3
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            artifact_name: ecowatch_backend
+            asset_name: ecowatch_backend-x86_64-unknown-linux-gnu
+          - target: x86_64-unknown-linux-musl
+            artifact_name: ecowatch_backend
+            asset_name: ecowatch_backend-x86_64-unknown-linux-musl
+          - target: x86_64-pc-windows-gnu
+            artifact_name: ecowatch_backend.exe
+            asset_name: ecowatch_backend-x86_64-pc-windows-gnu.exe
+          - target: aarch64-unknown-linux-gnu
+            artifact_name: ecowatch_backend
+            asset_name: ecowatch_backend-aarch64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup rust-toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: tauri-cli
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target ${{ matrix.target }}
+
+      - name: Check result
+        run: ls -la ${{ github.workspace }}/target/${{ matrix.target }}/release/
