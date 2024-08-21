@@ -41,7 +41,7 @@ jobs:
 
       - name: Setup database
         run: |
-          sqlx migrate add create
+          sqlx database create
           sqlx migrate run --source ./db/migrations
 
       - name: Build

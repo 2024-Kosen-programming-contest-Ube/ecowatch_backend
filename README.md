@@ -11,6 +11,6 @@ cargo install sqlx-cli
 database を作成し、マイグレーションを実行
 
 ```
-sqlx migrate add create
+sqlx database create
 sqlx migrate run --source ./db/migrations
 ```
