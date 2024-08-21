@@ -43,6 +43,7 @@ jobs:
         run: |
           sqlx database create
           sqlx migrate run --source ./db/migrations
+          cargo sqlx prepare
 
       - name: Build
         uses: actions-rs/cargo@v1
