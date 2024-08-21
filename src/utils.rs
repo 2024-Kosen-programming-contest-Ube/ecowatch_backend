@@ -1,9 +1,83 @@
-use bytes::Bytes;
+use anyhow::Result;
+use argon2::password_hash::SaltString;
+use argon2::{Algorithm, Argon2, Params, PasswordHasher};
+use bytes::{Buf, Bytes};
 use http_body_util::combinators::BoxBody;
-use http_body_util::{BodyExt, Empty};
+use http_body_util::{BodyExt, Empty, Full};
+use hyper::{header, Request, Response, StatusCode};
+use serde::Serialize;
+use sqlx::error::DatabaseError;
+use sqlx::sqlite::SqliteQueryResult;
 
 pub fn empty() -> BoxBody<Bytes, hyper::Error> {
     Empty::<Bytes>::new()
         .map_err(|never| match never {})
         .boxed()
+}
+
+fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, hyper::Error> {
+    Full::new(chunk.into())
+        .map_err(|never| match never {})
+        .boxed()
+}
+
+pub async fn parse_req_json<T: for<'de> serde::de::Deserialize<'de>>(
+    req: Request<hyper::body::Incoming>,
+) -> Result<T> {
+    let body = req.collect().await?.aggregate();
+    let data = serde_json::from_reader::<_, T>(body.reader())?;
+    Ok(data)
+}
+
+pub fn compute_password_hash(password: String) -> String {
+    let salt = SaltString::generate(&mut rand::thread_rng());
+    Argon2::new(
+        Algorithm::Argon2id,
+        argon2::Version::V0x13,
+        Params::new(15000, 2, 1, None).unwrap(),
+    )
+    .hash_password(password.as_bytes(), &salt)
+    .unwrap()
+    .to_string()
+}
+
+pub fn response_json(
+    status: StatusCode,
+    json: String,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+    let response = Response::builder()
+        .status(status)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(full(json))?;
+    Ok(response)
+}
+
+pub fn response_empty(status: StatusCode) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+    let mut response = Response::new(empty());
+    *response.status_mut() = status;
+    Ok(response)
+}
+
+#[derive(Serialize)]
+struct ResponseErrorMessage {
+    error: String,
+}
+
+pub fn response_error_message(
+    status: StatusCode,
+    msg: String,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+    let res = ResponseErrorMessage { error: msg };
+    let json = serde_json::to_string(&res)?;
+    response_json(status, json)
+}
+
+pub fn check_db_error(
+    result: &core::result::Result<SqliteQueryResult, sqlx::error::Error>,
+) -> Option<&(dyn DatabaseError + 'static)> {
+    if let Err(e) = result {
+        return e.as_database_error();
+    }
+
+    None
 }
