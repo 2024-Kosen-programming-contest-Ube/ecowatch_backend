@@ -6,18 +6,25 @@ static POOL: OnceCell<SqlitePool> = OnceCell::const_new();
 
 pub async fn init() {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
     if !Sqlite::database_exists(&database_url)
         .await
         .expect("Failed to check database exists.")
     {
         Sqlite::create_database(&database_url)
             .await
-            .expect("Falied to create database.")
+            .expect("Falied to create database.");
     }
 
     let pool = SqlitePool::connect(&database_url)
         .await
         .expect("Failed connect to database.");
+
+    sqlx::migrate!("db/migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to migrate database.");
+
     POOL.set(pool).expect("Failed to set connection pool");
 }
 
