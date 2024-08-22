@@ -1,15 +1,16 @@
 use anyhow::Result;
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use hyper::{
     header::{HeaderValue, SET_COOKIE},
     Request, Response, StatusCode,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::{database, utils};
+
+const CLASS_TOKEN: &str = "class_token";
 
 #[derive(Deserialize)]
 struct CreateData {
@@ -175,4 +176,63 @@ pub async fn handler_login(
         .headers_mut()
         .append(SET_COOKIE, HeaderValue::from_str(token_cookie.as_str())?);
     Ok(response)
+}
+
+#[derive(Serialize)]
+struct DayStatus {
+    class_id: String,
+    point: i64,
+    attend: Option<i64>,
+    date: String,
+}
+
+pub async fn handler_get_now_status(
+    req: Request<hyper::body::Incoming>,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+    let token = match utils::get_cookie(&req, CLASS_TOKEN.to_string()) {
+        Some(token) => token,
+        None => return utils::response_empty(StatusCode::UNAUTHORIZED),
+    };
+
+    let pool = &database::get_pool().await;
+
+    let result = sqlx::query_scalar!("SELECT class_id FROM class_token WHERE token=$1", token)
+        .fetch_optional(pool)
+        .await;
+    let class_id = match result {
+        Ok(v) => match v {
+            Some(class_id) => class_id,
+            None => {
+                return utils::response_error_message(
+                    StatusCode::UNAUTHORIZED,
+                    "Invalid token".to_string(),
+                )
+            }
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let result = sqlx::query_as!(
+        DayStatus,
+        "SELECT * FROM day_status WHERE class_id=$1 AND date=date('now')",
+        class_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    let day_status = match result {
+        Ok(v) => match v {
+            Some(_day_status) => _day_status,
+            None => return utils::response_empty(StatusCode::OK),
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    utils::response_struct_json::<DayStatus>(StatusCode::OK, &day_status)
 }

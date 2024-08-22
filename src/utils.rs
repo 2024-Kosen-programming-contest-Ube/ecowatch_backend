@@ -6,6 +6,7 @@ use cookie::time::Duration;
 use cookie::Cookie;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Empty, Full};
+use hyper::header::COOKIE;
 use hyper::{header, Request, Response, StatusCode};
 use serde::Serialize;
 use sqlx::error::DatabaseError;
@@ -54,6 +55,17 @@ pub fn response_json(
     Ok(response)
 }
 
+pub fn response_struct_json<T>(
+    status: StatusCode,
+    value: &T,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>>
+where
+    T: ?Sized + Serialize,
+{
+    let json = serde_json::to_string(value)?;
+    response_json(status, json)
+}
+
 pub fn response_empty(status: StatusCode) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
     let mut response = Response::new(empty());
     *response.status_mut() = status;
@@ -88,6 +100,24 @@ pub fn create_cookie(key: String, value: String) -> String {
         .max_age(Duration::days(365))
         .build();
     cookie.encoded().to_string()
+}
+
+pub fn get_cookie(req: &Request<hyper::body::Incoming>, key: String) -> Option<String> {
+    for cookie_header in req.headers().get_all(COOKIE).iter() {
+        match cookie_header.to_str() {
+            Ok(header_str) => match Cookie::parse(header_str) {
+                Ok(cookie) => {
+                    if cookie.name() == key {
+                        return Some(cookie.value().to_string());
+                    }
+                }
+                Err(e) => println!("{}", e.to_string()),
+            },
+            Err(e) => println!("{}", e.to_string()),
+        }
+    }
+
+    return None;
 }
 
 pub fn check_db_error(
