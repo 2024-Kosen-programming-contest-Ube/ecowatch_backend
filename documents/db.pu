@@ -1,18 +1,20 @@
 @startuml database
 
 entity school {
-  id: TEXT
+  id: TEXT NOT NULL PRIMARY KEY
   --
-  name: TEXT
+  name: TEXT NOT NULL
 }
 
 entity classroom {
-  id: TEXT
+  id: TEXT NOT NULL PRIMARY KEY
   --
-  school_id: TEXT
-  grade: INTEGER
-  name: TEXT
-  password_hash: TEXT
+  school_id: TEXT NOT NULL
+  grade: INTEGER NOT NULL
+  name: TEXT NOT NULL
+  password_hash: TEXT NOT NULL
+  --
+  UNIQUE("school_id", "grade", "name")
 }
 
 entity teacher {
@@ -24,10 +26,10 @@ entity teacher {
 }
 
 entity day_status {
-  date: TEXT(date)
-  class_id: TEXT
-  point: INTEGER
+  class_id: TEXT NOT NULL
+  point: INTEGER NOT NULL
   attend: INTEGER
+  date: TEXT(date) NOT NULL
 }
 
 entity sensor_log {
@@ -43,25 +45,22 @@ entity checklist {
 }
 
 entity class_token {
-  token: TEXT
+  token: TEXT NOT NULL PRIMARY KEY
   --
-  class_id: TEXT
-  expired_time: TEXT(time)
+  class_id: TEXT NOT NULL
 }
 
 entity teacher_token {
-  token: TEXT
+  token: TEXT NOT NULL PRIMARY KEY
   --
-  teacher_id: TEXT
-  expired_time: TEXT(time)
+  teacher_id: TEXT NOT NULL
 }
 
 entity student_token {
-  token: TEXT
+  token: TEXT NOT NULL PRIMARY KEY
   --
-  student_id(出席番号): TEXT
-  class_id: TEXT
-  expired_time: TEXT(time)
+  student_id(出席番号): INTEGER NOT NULL
+  class_id: TEXT NOT NULL
 }
 
 school ||..|{ classroom

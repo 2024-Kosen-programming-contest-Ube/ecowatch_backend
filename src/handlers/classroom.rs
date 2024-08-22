@@ -118,7 +118,7 @@ pub async fn handler_login(
         "SELECT password_hash FROM classroom WHERE id=$1",
         login_data.id
     )
-    .fetch_one(pool)
+    .fetch_optional(pool)
     .await;
 
     let hashed_password = match result {
