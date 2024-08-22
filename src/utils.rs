@@ -9,8 +9,6 @@ use http_body_util::{BodyExt, Empty, Full};
 use hyper::header::COOKIE;
 use hyper::{header, Request, Response, StatusCode};
 use serde::Serialize;
-use sqlx::error::DatabaseError;
-use sqlx::sqlite::SqliteQueryResult;
 
 pub fn empty() -> BoxBody<Bytes, hyper::Error> {
     Empty::<Bytes>::new()
@@ -118,14 +116,4 @@ pub fn get_cookie(req: &Request<hyper::body::Incoming>, key: String) -> Option<S
     }
 
     return None;
-}
-
-pub fn check_db_error(
-    result: &core::result::Result<SqliteQueryResult, sqlx::error::Error>,
-) -> Option<&(dyn DatabaseError + 'static)> {
-    if let Err(e) = result {
-        return e.as_database_error();
-    }
-
-    None
 }
