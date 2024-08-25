@@ -217,7 +217,7 @@ pub async fn handler_get_now_status(
 
     let result = sqlx::query_as!(
         DayStatus,
-        "SELECT * FROM day_status WHERE class_id=$1 AND date=date('now')",
+        "SELECT * FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",
         class_id
     )
     .fetch_optional(pool)
