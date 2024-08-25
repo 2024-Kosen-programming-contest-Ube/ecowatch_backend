@@ -1,4 +1,4 @@
-CREATE TABLE school("id" TEXT NOT NULL PRIMARY KEY, "school_name" TEXT NOT NULL);
+CREATE TABLE school("id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL);
 CREATE TABLE classroom("id" TEXT NOT NULL PRIMARY KEY, "school_id" TEXT NOT NULL, "grade" INTEGER NOT NULL, "name" TEXT NOT NULL, "password_hash" TEXT NOT NULL, UNIQUE("school_id", "grade", "name"));
 CREATE TABLE day_status("class_id" TEXT NOT NULL, "point" INTEGER NOT NULL, "attend" INTEGER, "date" TEXT NOT NULL);
 CREATE TABLE sensor_log("class_id" TEXT, "time" TEXT, "values" TEXT);
