@@ -43,7 +43,7 @@ pub async fn handler_create(
     let pool = &database::get_pool().await;
 
     let result = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM classroom WHERE school_id=$1",
+        "SELECT EXISTS(SELECT 1 FROM school WHERE id=$1)",
         create_data.school_id
     )
     .fetch_one(pool)
