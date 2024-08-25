@@ -92,7 +92,7 @@ pub async fn handler_create(
 
 #[derive(Deserialize)]
 struct LoginData {
-    id: String,
+    class_id: String,
     password: String,
 }
 
@@ -117,7 +117,7 @@ pub async fn handler_login(
 
     let result = sqlx::query_scalar!(
         "SELECT password_hash FROM classroom WHERE id=$1",
-        login_data.id
+        login_data.class_id
     )
     .fetch_optional(pool)
     .await;
@@ -159,7 +159,7 @@ pub async fn handler_login(
     let result = sqlx::query!(
         "INSERT INTO class_token VALUES($1, $2)",
         token,
-        login_data.id
+        login_data.class_id
     )
     .execute(pool)
     .await;
