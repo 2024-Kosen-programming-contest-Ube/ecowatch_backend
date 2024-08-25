@@ -236,3 +236,97 @@ pub async fn handler_get_now_status(
 
     utils::response_struct_json::<DayStatus>(StatusCode::OK, &day_status)
 }
+
+#[derive(Deserialize)]
+struct RegistAttendanceRequest {
+    attendees: i64,
+}
+
+pub async fn handler_regist_attendance(
+    req: Request<hyper::body::Incoming>,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+    let token = match utils::get_cookie(&req, CLASS_TOKEN.to_string()) {
+        Some(token) => token,
+        None => return utils::response_empty(StatusCode::UNAUTHORIZED),
+    };
+
+    let req_data = {
+        let result = utils::parse_req_json::<RegistAttendanceRequest>(req).await;
+        match result {
+            Ok(r) => r,
+            Err(e) => {
+                println!("{}", e.to_string());
+                return utils::response_error_message(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid params".to_string(),
+                );
+            }
+        }
+    };
+
+    let pool = &database::get_pool().await;
+
+    let result = sqlx::query_scalar!("SELECT class_id FROM class_token WHERE token=$1", token)
+        .fetch_optional(pool)
+        .await;
+    let class_id = match result {
+        Ok(v) => match v {
+            Some(class_id) => class_id,
+            None => {
+                return utils::response_error_message(
+                    StatusCode::UNAUTHORIZED,
+                    "Invalid token".to_string(),
+                )
+            }
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let result = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT * FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime'))",
+        class_id
+    )
+    .fetch_one(pool)
+    .await;
+
+    let exist_status = match result {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    if exist_status > 0 {
+        let result = sqlx::query!(
+            "UPDATE day_status SET attend = $1 WHERE class_id=$2 AND date=date('now', 'localtime')",
+            req_data.attendees,
+            class_id
+        )
+        .execute(pool)
+        .await;
+
+        if let Err(e) = result {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    } else {
+        let result = sqlx::query!(
+            "INSERT INTO day_status VALUES($1, 0, $2, date('now', 'localtime'))",
+            class_id,
+            req_data.attendees
+        )
+        .execute(pool)
+        .await;
+
+        if let Err(e) = result {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    utils::response_empty(StatusCode::OK)
+}
