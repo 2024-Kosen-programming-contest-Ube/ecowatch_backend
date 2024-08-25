@@ -65,8 +65,7 @@ where
 }
 
 pub fn response_empty(status: StatusCode) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
-    let mut response = Response::new(empty());
-    *response.status_mut() = status;
+    let response = Response::builder().status(status).body(empty())?;
     Ok(response)
 }
 

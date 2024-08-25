@@ -1,22 +1,23 @@
 use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePool, Sqlite};
-use std::env;
 use tokio::sync::OnceCell;
+
+use crate::config::CONFIG;
 
 static POOL: OnceCell<SqlitePool> = OnceCell::const_new();
 
 pub async fn init() {
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = &CONFIG.database_url;
 
-    if !Sqlite::database_exists(&database_url)
+    if !Sqlite::database_exists(database_url)
         .await
         .expect("Failed to check database exists.")
     {
-        Sqlite::create_database(&database_url)
+        Sqlite::create_database(database_url)
             .await
             .expect("Falied to create database.");
     }
 
-    let pool = SqlitePool::connect(&database_url)
+    let pool = SqlitePool::connect(database_url)
         .await
         .expect("Failed connect to database.");
 

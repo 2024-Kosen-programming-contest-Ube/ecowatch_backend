@@ -3,7 +3,7 @@ use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use hyper::{Method, Request, Response, StatusCode};
 
-use crate::utils;
+use crate::{config::CONFIG, utils};
 
 mod classroom;
 mod school;

@@ -1,5 +1,4 @@
 use anyhow::Result;
-use dotenvy;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
@@ -7,14 +6,13 @@ use std::env;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 
+mod config;
 mod database;
 mod handlers;
 mod utils;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    dotenvy::dotenv().expect("Failed to read .env file");
-
     database::init().await;
 
     let port = {
