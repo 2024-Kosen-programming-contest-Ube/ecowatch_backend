@@ -226,7 +226,7 @@ pub async fn handler_get_now_status(
     let day_status = match result {
         Ok(v) => match v {
             Some(_day_status) => _day_status,
-            None => return utils::response_empty(StatusCode::OK),
+            None => return utils::response_json(StatusCode::OK, "{}".to_string()),
         },
         Err(e) => {
             println!("{}", e.to_string());
