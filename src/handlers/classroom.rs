@@ -348,11 +348,11 @@ pub async fn handler_get_all(_: Request<hyper::body::Incoming>) -> utils::Handle
 
 #[derive(Deserialize)]
 struct SensorRequest {
-    temperature: i64,
-    humidity: i64,
+    temperature: f64,
+    humidity: f64,
     #[serde(alias = "isPeople")]
     is_people: bool,
-    lux: i64,
+    lux: f64,
     useairconditionaer: bool,
     airconditionaertime: String,
 }
@@ -374,7 +374,7 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
     };
 
     let req_data = {
-        let result = utils::parse_req_json::<RegistAttendanceRequest>(req).await;
+        let result = utils::parse_req_json::<SensorRequest>(req).await;
         match result {
             Ok(r) => r,
             Err(e) => {
