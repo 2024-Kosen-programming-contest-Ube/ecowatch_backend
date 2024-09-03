@@ -19,6 +19,7 @@ pub async fn route(
         (&Method::POST, "/classroom/regist_attendance") => {
             classroom::handler_regist_attendance(req).await
         }
+        (&Method::POST, "/classroom/sensor") => classroom::handler_sensor(req).await,
         (&Method::POST, "/school/create") => school::handler_create(req).await,
 
         // Return the 404 Not Found for other routes.

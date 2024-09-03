@@ -345,3 +345,103 @@ pub async fn handler_get_all(_: Request<hyper::body::Incoming>) -> utils::Handle
 
     utils::response_struct_json(StatusCode::OK, &all)
 }
+
+#[derive(Deserialize)]
+struct SensorRequest {
+    temperature: i64,
+    humidity: i64,
+    #[serde(alias = "isPeople")]
+    is_people: bool,
+    lux: i64,
+    useairconditionaer: bool,
+    airconditionaertime: String,
+}
+
+#[derive(Serialize)]
+struct SensorResponse {
+    point: i64,
+}
+
+pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let class_id = {
+        let result = utils::get_class_id_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
+    };
+
+    let req_data = {
+        let result = utils::parse_req_json::<RegistAttendanceRequest>(req).await;
+        match result {
+            Ok(r) => r,
+            Err(e) => {
+                println!("{}", e.to_string());
+                return utils::response_error_message(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid params".to_string(),
+                );
+            }
+        }
+    };
+
+    let result = sqlx::query_scalar!(
+        "SELECT point FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",
+        class_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    let point_option = match result {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let point_diff = 10;
+    let mut result_point = 0;
+
+    match point_option {
+        Some(point) => {
+            result_point = point + point_diff;
+            let result = sqlx::query!(
+                "UPDATE day_status SET point = $1 WHERE class_id=$2 AND date=date('now', 'localtime')",
+                result_point,
+                class_id
+            )
+            .execute(pool)
+            .await;
+
+            if let Err(e) = result {
+                println!("{}", e.to_string());
+                return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        }
+        None => {
+            result_point = std::cmp::max(0, point_diff);
+            let result = sqlx::query!(
+                "INSERT INTO day_status VALUES($1, $2, NULL, date('now', 'localtime'))",
+                class_id,
+                result_point
+            )
+            .execute(pool)
+            .await;
+
+            if let Err(e) = result {
+                println!("{}", e.to_string());
+                return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        }
+    };
+
+    utils::response_struct_json::<SensorResponse>(
+        StatusCode::OK,
+        &SensorResponse {
+            point: result_point,
+        },
+    )
+}
