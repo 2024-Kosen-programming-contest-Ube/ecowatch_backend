@@ -1,16 +1,11 @@
-use anyhow::Result;
-use bytes::Bytes;
-use http_body_util::combinators::BoxBody;
 use hyper::{
     header::{HeaderValue, SET_COOKIE},
-    Request, Response, StatusCode,
+    Request, StatusCode,
 };
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::{database, utils};
-
-const CLASS_TOKEN: &str = "class_token";
 
 #[derive(Deserialize)]
 struct CreateRequest {
@@ -20,9 +15,7 @@ struct CreateRequest {
     password: String,
 }
 
-pub async fn handler_create(
-    req: Request<hyper::body::Incoming>,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+pub async fn handler_create(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
     let create_data = {
         let result = utils::parse_req_json::<CreateRequest>(req).await;
         match result {
@@ -96,9 +89,7 @@ struct LoginRequest {
     password: String,
 }
 
-pub async fn handler_login(
-    req: Request<hyper::body::Incoming>,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+pub async fn handler_login(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
     let login_data = {
         let result = utils::parse_req_json::<LoginRequest>(req).await;
         match result {
@@ -186,32 +177,14 @@ struct DayStatus {
     date: String,
 }
 
-pub async fn handler_get_now_status(
-    req: Request<hyper::body::Incoming>,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
-    let token = match utils::get_cookie(&req, CLASS_TOKEN.to_string()) {
-        Some(token) => token,
-        None => return utils::response_empty(StatusCode::UNAUTHORIZED),
-    };
-
+pub async fn handler_get_now_status(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
     let pool = &database::get_pool().await;
 
-    let result = sqlx::query_scalar!("SELECT class_id FROM class_token WHERE token=$1", token)
-        .fetch_optional(pool)
-        .await;
-    let class_id = match result {
-        Ok(v) => match v {
-            Some(class_id) => class_id,
-            None => {
-                return utils::response_error_message(
-                    StatusCode::UNAUTHORIZED,
-                    "Invalid token".to_string(),
-                )
-            }
-        },
-        Err(e) => {
-            println!("{}", e.to_string());
-            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+    let class_id = {
+        let result = utils::get_class_id_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
         }
     };
 
@@ -244,10 +217,15 @@ struct RegistAttendanceRequest {
 
 pub async fn handler_regist_attendance(
     req: Request<hyper::body::Incoming>,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
-    let token = match utils::get_cookie(&req, CLASS_TOKEN.to_string()) {
-        Some(token) => token,
-        None => return utils::response_empty(StatusCode::UNAUTHORIZED),
+) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let class_id = {
+        let result = utils::get_class_id_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
     };
 
     let req_data = {
@@ -261,27 +239,6 @@ pub async fn handler_regist_attendance(
                     "Invalid params".to_string(),
                 );
             }
-        }
-    };
-
-    let pool = &database::get_pool().await;
-
-    let result = sqlx::query_scalar!("SELECT class_id FROM class_token WHERE token=$1", token)
-        .fetch_optional(pool)
-        .await;
-    let class_id = match result {
-        Ok(v) => match v {
-            Some(class_id) => class_id,
-            None => {
-                return utils::response_error_message(
-                    StatusCode::UNAUTHORIZED,
-                    "Invalid token".to_string(),
-                )
-            }
-        },
-        Err(e) => {
-            println!("{}", e.to_string());
-            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
 
@@ -351,9 +308,7 @@ struct AllClassrooms {
     classrooms: Vec<Classroom>,
 }
 
-pub async fn handler_get_all(
-    _: Request<hyper::body::Incoming>,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+pub async fn handler_get_all(_: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
     let pool = &database::get_pool().await;
 
     let result = sqlx::query_as!(School, "SELECT * FROM school")

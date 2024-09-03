@@ -9,6 +9,11 @@ use http_body_util::{BodyExt, Empty, Full};
 use hyper::header::COOKIE;
 use hyper::{header, Request, Response, StatusCode};
 use serde::Serialize;
+use sqlx::{Pool, Sqlite};
+
+pub const CLASS_TOKEN: &str = "class_token";
+
+pub type HandlerResponse = Result<Response<BoxBody<Bytes, hyper::Error>>>;
 
 pub fn empty() -> BoxBody<Bytes, hyper::Error> {
     Empty::<Bytes>::new()
@@ -53,10 +58,7 @@ pub fn response_json(
     Ok(response)
 }
 
-pub fn response_struct_json<T>(
-    status: StatusCode,
-    value: &T,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>>
+pub fn response_struct_json<T>(status: StatusCode, value: &T) -> HandlerResponse
 where
     T: ?Sized + Serialize,
 {
@@ -64,7 +66,7 @@ where
     response_json(status, json)
 }
 
-pub fn response_empty(status: StatusCode) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+pub fn response_empty(status: StatusCode) -> HandlerResponse {
     let response = Response::builder().status(status).body(empty())?;
     Ok(response)
 }
@@ -74,10 +76,7 @@ struct ResponseErrorMessage {
     error: String,
 }
 
-pub fn response_error_message(
-    status: StatusCode,
-    msg: String,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+pub fn response_error_message(status: StatusCode, msg: String) -> HandlerResponse {
     let res = ResponseErrorMessage { error: msg };
     let json = serde_json::to_string(&res)?;
     response_json(status, json)
@@ -115,4 +114,33 @@ pub fn get_cookie(req: &Request<hyper::body::Incoming>, key: String) -> Option<S
     }
 
     return None;
+}
+
+pub async fn get_class_id_from_token(
+    pool: &Pool<Sqlite>,
+    req: &Request<hyper::body::Incoming>,
+) -> Result<String, HandlerResponse> {
+    let token = match get_cookie(req, CLASS_TOKEN.to_string()) {
+        Some(token) => token,
+        None => return Err(response_empty(StatusCode::UNAUTHORIZED)),
+    };
+    let result = sqlx::query_scalar!("SELECT class_id FROM class_token WHERE token=$1", token)
+        .fetch_optional(pool)
+        .await;
+    let class_id = match result {
+        Ok(v) => match v {
+            Some(class_id) => class_id,
+            None => {
+                return Err(response_error_message(
+                    StatusCode::UNAUTHORIZED,
+                    "Invalid token".to_string(),
+                ))
+            }
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return Err(response_empty(StatusCode::INTERNAL_SERVER_ERROR));
+        }
+    };
+    return Ok(class_id);
 }
