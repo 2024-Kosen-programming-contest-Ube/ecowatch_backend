@@ -330,3 +330,63 @@ pub async fn handler_regist_attendance(
 
     utils::response_empty(StatusCode::OK)
 }
+
+#[derive(Serialize)]
+struct Classroom {
+    id: String,
+    school_id: String,
+    grade: i64,
+    name: String,
+}
+
+#[derive(Serialize)]
+struct School {
+    id: String,
+    name: String,
+}
+
+#[derive(Serialize)]
+struct AllClassrooms {
+    schools: Vec<School>,
+    classrooms: Vec<Classroom>,
+}
+
+pub async fn handler_get_all(
+    _: Request<hyper::body::Incoming>,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+    let pool = &database::get_pool().await;
+
+    let result = sqlx::query_as!(School, "SELECT * FROM school")
+        .fetch_all(pool)
+        .await;
+
+    let schools = match result {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let result = sqlx::query_as!(
+        Classroom,
+        "SELECT id, school_id, grade, name FROM classroom"
+    )
+    .fetch_all(pool)
+    .await;
+
+    let classrooms = match result {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let all = AllClassrooms {
+        schools,
+        classrooms,
+    };
+
+    utils::response_struct_json(StatusCode::OK, &all)
+}
