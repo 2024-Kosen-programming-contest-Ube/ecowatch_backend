@@ -13,7 +13,7 @@ use crate::{database, utils};
 const CLASS_TOKEN: &str = "class_token";
 
 #[derive(Deserialize)]
-struct CreateData {
+struct CreateRequest {
     school_id: String,
     grade: i64,
     name: String,
@@ -24,7 +24,7 @@ pub async fn handler_create(
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
     let create_data = {
-        let result = utils::parse_req_json::<CreateData>(req).await;
+        let result = utils::parse_req_json::<CreateRequest>(req).await;
         match result {
             Ok(r) => r,
             Err(e) => {
@@ -91,7 +91,7 @@ pub async fn handler_create(
 }
 
 #[derive(Deserialize)]
-struct LoginData {
+struct LoginRequest {
     class_id: String,
     password: String,
 }
@@ -100,7 +100,7 @@ pub async fn handler_login(
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
     let login_data = {
-        let result = utils::parse_req_json::<LoginData>(req).await;
+        let result = utils::parse_req_json::<LoginRequest>(req).await;
         match result {
             Ok(r) => r,
             Err(e) => {
