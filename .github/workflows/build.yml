@@ -8,10 +8,6 @@ jobs:
     env:
       DATABASE_URL: sqlite:./db/database.db
 
-    outputs:
-      version_changed: ${{steps.check_version.outputs.changed}}
-      version: ${{steps.check_version.outputs.version}}
-
     strategy:
       matrix:
         include:
@@ -71,14 +67,21 @@ jobs:
           name: ${{ matrix.asset_name }}
           path: ${{ github.workspace }}/artifact/*
 
+  check_version:
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{steps.check_version.outputs.changed}}
+      version: ${{steps.check_version.outputs.version}}
+    steps:
+      - uses: actions/checkout@v4
       - name: Check version changed
         id: check_version
         uses: radumarias/action-check-version-changed-rust@v1
 
   release:
     runs-on: ubuntu-latest
-    needs: [build]
-    if: needs.build.outputs.version_changed == 'true'
+    needs: [build, check_version]
+    if: needs.check_version.outputs.version_changed == 'true'
 
     steps:
       - name: Download artifacts
