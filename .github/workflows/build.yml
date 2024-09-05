@@ -87,25 +87,26 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./artifact
+          path: ./artifacts
 
       - name: Display structure of downloaded files
-        run: ls ./artifact
+        run: ls -R ./artifacts
 
-    #   - name: Create tag
-    #     uses: mathieudutour/github-tag-action@v6.2
-    #     with:
-    #       custom_tag: ${{ needs.build.outputs.version }}
-    #       github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create tag
+        id: create_tag
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          custom_tag: ${{ needs.check_version.outputs.version }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
-    # - name: Create a GitHub release
-    #   uses: ncipollo/release-action@v1
-    #   with:
-    #     tag: ${{ steps.create_tag.outputs.new_tag }}
-    #     name: Release ${{ steps.create_tag.outputs.new_tag }}
-    #     body: ${{ steps.create_tag.outputs.changelog }}
-    #     artifacts:
-    #       "./artifacts/${{ env.PROJECT_NAME }}-x86_64-windows-${{steps.check_version.outputs.current-version}}.zip,
-    #       ./artifacts/${{ env.PROJECT_NAME }}-x86_64-linux-${{steps.check_version.outputs.current-version}}.tar.gz,
-    #       ./artifacts/${{ env.PROJECT_NAME }}-x86_64-linux-static_libstdcpp-${{steps.check_version.outputs.current-version}}.tar.gz"
-    #     makeLatest: "latest"
+      - name: Create a GitHub release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.create_tag.outputs.new_tag }}
+          name: Release ${{ steps.create_tag.outputs.new_tag }}
+          body: ${{ steps.create_tag.outputs.changelog }}
+          artifacts: "./artifacts/ecowatch_backend-aarch64-unknown-linux-gnu,
+            ./artifacts/ecowatch_backend-x86_64-pc-windows-gnu,
+            ./artifacts/ecowatch_backend-x86_64-unknown-linux-gnu,
+            ./artifacts/ecowatch_backend-x86_64-unknown-linux-musl"
+          makeLatest: "latest"
