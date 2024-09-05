@@ -89,8 +89,13 @@ jobs:
         with:
           path: ./artifacts
 
-      - name: Display structure of downloaded files
-        run: ls -R ./artifacts
+      - name: Zip artifacts
+        run: |
+          cd ./artifacts
+          zip -r ecowatch_backend-aarch64-unknown-linux-gnu.zip ecowatch_backend-aarch64-unknown-linux-gnu
+          zip -r ecowatch_backend-x86_64-pc-windows-gnu.zip ecowatch_backend-x86_64-pc-windows-gnu
+          zip -r ecowatch_backend-x86_64-unknown-linux-gnu.zip ecowatch_backend-x86_64-unknown-linux-gnu
+          zip -r ecowatch_backend-x86_64-unknown-linux-musl.zip ecowatch_backend-x86_64-unknown-linux-musl
 
       - name: Create tag
         id: create_tag
@@ -105,8 +110,9 @@ jobs:
           tag: ${{ steps.create_tag.outputs.new_tag }}
           name: Release ${{ steps.create_tag.outputs.new_tag }}
           body: ${{ steps.create_tag.outputs.changelog }}
-          artifacts: "./artifacts/ecowatch_backend-aarch64-unknown-linux-gnu,
-            ./artifacts/ecowatch_backend-x86_64-pc-windows-gnu,
-            ./artifacts/ecowatch_backend-x86_64-unknown-linux-gnu,
-            ./artifacts/ecowatch_backend-x86_64-unknown-linux-musl"
+          artifacts:
+            "./artifacts/ecowatch_backend-aarch64-unknown-linux-gnu.zip,
+            ./artifacts/ecowatch_backend-x86_64-pc-windows-gnu.zip,
+            ./artifacts/ecowatch_backend-x86_64-unknown-linux-gnu.zip,
+            ./artifacts/ecowatch_backend-x86_64-unknown-linux-musl.zip"
           makeLatest: "latest"
