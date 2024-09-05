@@ -92,10 +92,10 @@ jobs:
       - name: Zip artifacts
         run: |
           cd ./artifacts
-          zip -r ecowatch_backend-aarch64-unknown-linux-gnu.zip ecowatch_backend-aarch64-unknown-linux-gnu
-          zip -r ecowatch_backend-x86_64-pc-windows-gnu.zip ecowatch_backend-x86_64-pc-windows-gnu
-          zip -r ecowatch_backend-x86_64-unknown-linux-gnu.zip ecowatch_backend-x86_64-unknown-linux-gnu
-          zip -r ecowatch_backend-x86_64-unknown-linux-musl.zip ecowatch_backend-x86_64-unknown-linux-musl
+          zip -r ecowatch_backend-aarch64-unknown-linux-gnu.zip ecowatch_backend-aarch64-unknown-linux-gnu/*
+          zip -r ecowatch_backend-x86_64-pc-windows-gnu.zip ecowatch_backend-x86_64-pc-windows-gnu/*
+          zip -r ecowatch_backend-x86_64-unknown-linux-gnu.zip ecowatch_backend-x86_64-unknown-linux-gnu/*
+          zip -r ecowatch_backend-x86_64-unknown-linux-musl.zip ecowatch_backend-x86_64-unknown-linux-musl/*
 
       - name: Create tag
         id: create_tag
