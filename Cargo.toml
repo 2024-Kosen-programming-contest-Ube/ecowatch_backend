@@ -11,7 +11,7 @@ hyper = { version = "1", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
 http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["full"] }
-sqlx = { version = "0.8.0", features = [
+sqlx = { version = "0.8.2", features = [
     "runtime-tokio",
     "tls-rustls",
     "sqlite",
