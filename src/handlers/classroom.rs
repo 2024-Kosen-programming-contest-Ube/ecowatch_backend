@@ -506,7 +506,6 @@ pub async fn handler_point(req: Request<hyper::body::Incoming>) -> utils::Handle
             rank = class_point.0 as i64 + 1;
         }
     }
-    println!("num:{}, rank: {}, point:{}", class_num, rank, point);
 
     utils::response_struct_json::<PointResponse>(
         StatusCode::OK,
