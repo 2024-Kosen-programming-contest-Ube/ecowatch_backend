@@ -408,6 +408,7 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
     match point_option {
         Some(point) => {
             result_point = point + point_diff;
+            result_point = std::cmp::min(900, result_point);
             let result = sqlx::query!(
                 "UPDATE day_status SET point = $1 WHERE class_id=$2 AND date=date('now', 'localtime')",
                 result_point,
@@ -442,6 +443,77 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
         StatusCode::OK,
         &SensorResponse {
             point: result_point,
+        },
+    )
+}
+
+struct ClassroomPoint {
+    class_id: String,
+    point: i64,
+}
+
+#[derive(Serialize)]
+struct PointResponse {
+    point: i64,
+    rank: i64,
+    class_num: i64,
+}
+
+pub async fn handler_point(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let class_id = {
+        let result = utils::get_class_id_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
+    };
+
+    let result = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM classroom WHERE classroom.school_id = (SELECT school_id FROM classroom WHERE id=$1)"
+    , class_id).fetch_one(pool).await;
+
+    let class_num = match result {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let result = sqlx::query_as!(
+        ClassroomPoint,
+        "SELECT class_id, point FROM day_status
+        JOIN classroom ON classroom.id = day_status.class_id
+        WHERE date=date('now', 'localtime') AND classroom.school_id = (SELECT school_id FROM classroom WHERE id=$1)
+        ORDER BY point DESC"
+    , class_id).fetch_all(pool).await;
+
+    let point_list = match result {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let mut rank = class_num;
+    let mut point = 0;
+    for class_point in point_list.iter().enumerate() {
+        if class_point.1.class_id == class_id {
+            point = class_point.1.point;
+            rank = class_point.0 as i64 + 1;
+        }
+    }
+    println!("num:{}, rank: {}, point:{}", class_num, rank, point);
+
+    utils::response_struct_json::<PointResponse>(
+        StatusCode::OK,
+        &PointResponse {
+            point,
+            rank,
+            class_num,
         },
     )
 }
