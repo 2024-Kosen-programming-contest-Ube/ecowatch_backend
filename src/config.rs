@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub port: String,
+    pub port: u16,
     pub database_url: String,
 }
 

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use config::CONFIG;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
@@ -15,11 +16,7 @@ mod utils;
 async fn main() -> Result<()> {
     database::init().await;
 
-    let port = {
-        let port_string: String = env::var("PORT").expect("PORT must be set");
-        port_string.parse::<u16>().expect("PORT must be u16")
-    };
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([127, 0, 0, 1], CONFIG.port));
 
     // We create a TcpListener and bind it to 127.0.0.1:3000
     let listener = TcpListener::bind(addr).await?;
