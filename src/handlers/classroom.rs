@@ -1,5 +1,5 @@
 use hyper::{
-    header::{HeaderValue, SET_COOKIE},
+    header::{HeaderName, HeaderValue, SET_COOKIE},
     Request, StatusCode,
 };
 use serde::{Deserialize, Serialize};
@@ -166,6 +166,15 @@ pub async fn handler_login(req: Request<hyper::body::Incoming>) -> utils::Handle
     response
         .headers_mut()
         .append(SET_COOKIE, HeaderValue::from_str(token_cookie.as_str())?);
+    Ok(response)
+}
+
+pub async fn handler_logout(_: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
+    let mut response = utils::response_empty(StatusCode::OK)?;
+    response.headers_mut().append(
+        HeaderName::from_static("clear-site-data"),
+        HeaderValue::from_str("\"cache\", \"cookies\"")?,
+    );
     Ok(response)
 }
 
