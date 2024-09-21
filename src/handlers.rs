@@ -7,6 +7,7 @@ use crate::utils;
 
 mod classroom;
 mod school;
+mod student;
 
 pub async fn route(
     req: Request<hyper::body::Incoming>,
@@ -23,6 +24,7 @@ pub async fn route(
         }
         (&Method::POST, "/classroom/sensor") => classroom::handler_sensor(req).await,
         (&Method::POST, "/school/create") => school::handler_create(req).await,
+        (&Method::POST, "/student/login") => student::handler_login(req).await,
 
         // Return the 404 Not Found for other routes.
         _ => utils::response_empty(StatusCode::NOT_FOUND),
