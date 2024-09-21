@@ -95,3 +95,45 @@ pub async fn handler_exist_checklist(
         },
     )
 }
+
+pub async fn handler_checklist(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let student_info = {
+        let result = utils::get_student_info_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
+    };
+
+    let checklist = {
+        let result = utils::read_body_req(req).await;
+        match result {
+            Ok(r) => r,
+            Err(e) => {
+                println!("{}", e.to_string());
+                return utils::response_error_message(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid params".to_string(),
+                );
+            }
+        }
+    };
+
+    let result = sqlx::query!(
+        "INSERT INTO checklist VALUES($1, $2, $3, date('now', 'localtime'))",
+        student_info.class_id,
+        student_info.student_id,
+        checklist
+    )
+    .execute(pool)
+    .await;
+
+    if let Err(e) = result {
+        eprintln!("{}", e);
+        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    utils::response_empty(StatusCode::OK)
+}

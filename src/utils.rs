@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use anyhow::Result;
 use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier};
@@ -36,6 +38,13 @@ pub async fn parse_req_json<T: for<'de> serde::de::Deserialize<'de>>(
     let body = req.collect().await?.aggregate();
     let data = serde_json::from_reader::<_, T>(body.reader())?;
     Ok(data)
+}
+
+pub async fn read_body_req(req: Request<hyper::body::Incoming>) -> Result<String> {
+    let body = req.collect().await?.aggregate();
+    let mut body_str = String::new();
+    body.reader().read_to_string(&mut body_str);
+    Ok(body_str)
 }
 
 pub fn compute_password_hash(password: String) -> String {
