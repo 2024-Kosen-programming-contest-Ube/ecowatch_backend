@@ -402,7 +402,10 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
                 println!("{}", time.as_str());
                 let latest_result = utils::parse_str_time(time.as_str());
                 match latest_result {
-                    Ok(latest) => (Utc::now() - latest).num_milliseconds(),
+                    Ok(latest) => {
+                        println!("{} : {}", Utc::now(), latest);
+                        (Utc::now() - latest).num_milliseconds()
+                    }
                     Err(e) => {
                         println!("e0: {}", e.to_string());
                         return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);

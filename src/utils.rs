@@ -3,7 +3,6 @@ use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier};
 use bytes::{Buf, Bytes};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
-use cookie::time::Duration;
 use cookie::Cookie;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Empty, Full};
@@ -96,7 +95,7 @@ pub fn create_cookie(key: String, value: String) -> String {
         .path("/")
         .secure(false)
         .http_only(true)
-        .max_age(Duration::days(365))
+        .max_age(cookie::time::Duration::days(365))
         .build();
     cookie.encoded().to_string()
 }
@@ -150,7 +149,7 @@ pub async fn get_class_id_from_token(
 
 pub fn parse_str_time(str_time: &str) -> Result<DateTime<Utc>> {
     let latest_naive = NaiveDateTime::parse_from_str(str_time, "%Y-%m-%d %H:%M:%S")?;
-    Ok(Utc.from_utc_datetime(&latest_naive))
+    Ok(Utc.from_utc_datetime(&latest_naive) + chrono::Duration::hours(-9))
 }
 
 #[derive(Deserialize)]
