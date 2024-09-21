@@ -2,14 +2,17 @@ use anyhow::Result;
 use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier};
 use bytes::{Buf, Bytes};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use cookie::time::Duration;
 use cookie::Cookie;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Empty, Full};
 use hyper::header::COOKIE;
 use hyper::{header, Request, Response, StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
+
+use crate::config::CONFIG;
 
 pub const CLASS_TOKEN: &str = "class_token";
 
@@ -143,4 +146,55 @@ pub async fn get_class_id_from_token(
         }
     };
     return Ok(class_id);
+}
+
+pub fn parse_str_time(str_time: &str) -> Result<DateTime<Utc>> {
+    let latest_naive = NaiveDateTime::parse_from_str(str_time, "%Y-%m-%d %H:%M:%S")?;
+    Ok(Utc.from_utc_datetime(&latest_naive))
+}
+
+#[derive(Deserialize)]
+pub struct Sensor {
+    temperature: f64,
+    humidity: f64,
+    #[serde(alias = "isPeople")]
+    is_people: bool,
+    lux: f64,
+    useairconditionaer: bool,
+    airconditionaertime: String,
+}
+
+pub fn calc_airconditionaer_point(sensor: Sensor, duraton_msec: i64) -> f64 {
+    let discomfort_index = 0.81 * sensor.temperature
+        + 0.01 * sensor.humidity * (0.99 * sensor.temperature - 14.3)
+        + 46.3;
+
+    // Check satisfy air conditioner usage standards
+    let satisfy_airconditionaer = if sensor.is_people == false {
+        false
+    } else if sensor.temperature < 18.0 || sensor.temperature > 28.0 {
+        true
+    } else if discomfort_index < 60.0 || discomfort_index > 75.0 {
+        true
+    } else {
+        false
+    };
+
+    let should_add_point = if satisfy_airconditionaer && sensor.useairconditionaer {
+        true
+    } else if !satisfy_airconditionaer && !sensor.useairconditionaer {
+        true
+    } else {
+        false
+    };
+
+    if !should_add_point {
+        return 0.0;
+    }
+
+    let co2p = 1500.0 / 1000.0 * 0.378;
+    let n = (std::cmp::max(duraton_msec, CONFIG.sensor_interval as i64) as f64 / (1000.0 * 60.0))
+        / 60.0;
+    println!("co2p:{} n:{} duration:{}", co2p, n, duraton_msec);
+    co2p * (10.0 - (discomfort_index - 67.5).abs()) * n * 100.0
 }

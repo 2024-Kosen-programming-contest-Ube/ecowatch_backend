@@ -1,3 +1,4 @@
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use hyper::{
     header::{HeaderName, HeaderValue, SET_COOKIE},
     Request, StatusCode,
@@ -5,7 +6,10 @@ use hyper::{
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-use crate::{database, utils};
+use crate::{
+    database,
+    utils::{self, Sensor},
+};
 
 #[derive(Deserialize)]
 struct CreateRequest {
@@ -355,17 +359,6 @@ pub async fn handler_get_all(_: Request<hyper::body::Incoming>) -> utils::Handle
     utils::response_struct_json(StatusCode::OK, &all)
 }
 
-#[derive(Deserialize)]
-struct SensorRequest {
-    temperature: f64,
-    humidity: f64,
-    #[serde(alias = "isPeople")]
-    is_people: bool,
-    lux: f64,
-    useairconditionaer: bool,
-    airconditionaertime: String,
-}
-
 #[derive(Serialize)]
 struct SensorResponse {
     point: i64,
@@ -383,7 +376,7 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
     };
 
     let req_data = {
-        let result = utils::parse_req_json::<SensorRequest>(req).await;
+        let result = utils::parse_req_json::<Sensor>(req).await;
         match result {
             Ok(r) => r,
             Err(e) => {
@@ -395,6 +388,51 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
             }
         }
     };
+
+    let result = sqlx::query_scalar!(
+        "SELECT time FROM latest_sensor_time WHERE class_id=$1",
+        class_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    let time_diff_msec = match result {
+        Ok(time_option) => match time_option {
+            Some(time) => {
+                println!("{}", time.as_str());
+                let latest_result = utils::parse_str_time(time.as_str());
+                match latest_result {
+                    Ok(latest) => (Utc::now() - latest).num_milliseconds(),
+                    Err(e) => {
+                        println!("e0: {}", e.to_string());
+                        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+                    }
+                }
+            }
+            None => 0,
+        },
+        Err(e) => {
+            println!("e1: {}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Update latest time
+    let result = sqlx::query!(
+        "REPLACE INTO latest_sensor_time values($1, datetime('now', 'localtime'))",
+        class_id
+    )
+    .execute(pool)
+    .await;
+
+    if let Err(e) = result {
+        println!("e2: {}", e.to_string());
+        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    // Calc point
+    let airconditionaer_point = utils::calc_airconditionaer_point(req_data, time_diff_msec);
+    println!("airp :{}", airconditionaer_point);
 
     let result = sqlx::query_scalar!(
         "SELECT point FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",

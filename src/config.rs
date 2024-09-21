@@ -6,6 +6,7 @@ use serde::Deserialize;
 pub struct Config {
     pub port: u16,
     pub database_url: String,
+    pub sensor_interval: u64, // msec
 }
 
 impl Config {

@@ -24,6 +24,7 @@ pub async fn init() {
     sqlx::migrate!("db/migrations")
         .run(&pool)
         .await
+        .inspect_err(|e| eprintln!("{e}"))
         .expect("Failed to migrate database.");
 
     POOL.set(pool).expect("Failed to set connection pool");
