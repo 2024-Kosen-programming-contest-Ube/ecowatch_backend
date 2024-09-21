@@ -2,7 +2,7 @@ use hyper::{
     header::{HeaderValue, SET_COOKIE},
     Request, StatusCode,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
 use crate::{database, utils};
@@ -46,11 +46,52 @@ pub async fn handler_login(req: Request<hyper::body::Incoming>) -> utils::Handle
         return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    let token_cookie = utils::create_cookie("student_token".to_string(), token);
+    let token_cookie = utils::create_cookie(utils::STUDENT_TOKEN.to_string(), token);
 
     let mut response = utils::response_empty(StatusCode::OK)?;
     response
         .headers_mut()
         .append(SET_COOKIE, HeaderValue::from_str(token_cookie.as_str())?);
     Ok(response)
+}
+
+#[derive(Serialize)]
+struct ExistChecklistResponse {
+    exist: bool,
+}
+
+pub async fn handler_exist_checklist(
+    req: Request<hyper::body::Incoming>,
+) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let student_info = {
+        let result = utils::get_student_info_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
+    };
+
+    let result = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT * FROM checklist WHERE class_id=$1 AND student_id=$2 AND date=date('now', 'localtime'))",
+        student_info.class_id, student_info.student_id
+    )
+    .fetch_one(pool)
+    .await;
+
+    let exist_checklist = match result {
+        Ok(v) => v > 0,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    utils::response_struct_json(
+        StatusCode::OK,
+        &ExistChecklistResponse {
+            exist: exist_checklist,
+        },
+    )
 }

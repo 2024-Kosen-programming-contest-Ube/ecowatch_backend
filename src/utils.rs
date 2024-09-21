@@ -14,6 +14,7 @@ use sqlx::{Pool, Sqlite};
 use crate::config::CONFIG;
 
 pub const CLASS_TOKEN: &str = "class_token";
+pub const STUDENT_TOKEN: &str = "student_token";
 
 pub type HandlerResponse = Result<Response<BoxBody<Bytes, hyper::Error>>>;
 
@@ -106,12 +107,12 @@ pub fn get_cookie(req: &Request<hyper::body::Incoming>, key: String) -> Option<S
             Ok(header_str) => {
                 for cookie_result in Cookie::split_parse(header_str) {
                     match cookie_result {
-                Ok(cookie) => {
-                    if cookie.name() == key {
-                        return Some(cookie.value().to_string());
-                    }
-                }
-                Err(e) => println!("{}", e.to_string()),
+                        Ok(cookie) => {
+                            if cookie.name() == key {
+                                return Some(cookie.value().to_string());
+                            }
+                        }
+                        Err(e) => println!("{}", e.to_string()),
                     }
                 }
             }
@@ -149,6 +150,46 @@ pub async fn get_class_id_from_token(
         }
     };
     return Ok(class_id);
+}
+
+pub struct StudentInfo {
+    pub class_id: String,
+    pub student_id: i64,
+}
+
+pub async fn get_student_info_from_token(
+    pool: &Pool<Sqlite>,
+    req: &Request<hyper::body::Incoming>,
+) -> Result<StudentInfo, HandlerResponse> {
+    println!("{:?}", req.headers());
+    let token = match get_cookie(req, STUDENT_TOKEN.to_string()) {
+        Some(token) => token,
+        None => return Err(response_empty(StatusCode::UNAUTHORIZED)),
+    };
+    println!("token: {}", token);
+    let result = sqlx::query_as!(
+        StudentInfo,
+        "SELECT class_id, student_id FROM student_token WHERE token=$1",
+        token
+    )
+    .fetch_optional(pool)
+    .await;
+    let info = match result {
+        Ok(v) => match v {
+            Some(info) => info,
+            None => {
+                return Err(response_error_message(
+                    StatusCode::UNAUTHORIZED,
+                    "Invalid token".to_string(),
+                ))
+            }
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return Err(response_empty(StatusCode::INTERNAL_SERVER_ERROR));
+        }
+    };
+    return Ok(info);
 }
 
 pub fn parse_str_time(str_time: &str) -> Result<DateTime<Utc>> {
