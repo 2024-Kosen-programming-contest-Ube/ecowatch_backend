@@ -103,18 +103,22 @@ pub fn create_cookie(key: String, value: String) -> String {
 pub fn get_cookie(req: &Request<hyper::body::Incoming>, key: String) -> Option<String> {
     for cookie_header in req.headers().get_all(COOKIE).iter() {
         match cookie_header.to_str() {
-            Ok(header_str) => match Cookie::parse(header_str) {
+            Ok(header_str) => {
+                for cookie_result in Cookie::split_parse(header_str) {
+                    match cookie_result {
                 Ok(cookie) => {
                     if cookie.name() == key {
                         return Some(cookie.value().to_string());
                     }
                 }
                 Err(e) => println!("{}", e.to_string()),
-            },
+                    }
+                }
+            }
+
             Err(e) => println!("{}", e.to_string()),
         }
     }
-
     return None;
 }
 
