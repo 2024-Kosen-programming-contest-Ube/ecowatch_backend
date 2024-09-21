@@ -161,12 +161,10 @@ pub async fn get_student_info_from_token(
     pool: &Pool<Sqlite>,
     req: &Request<hyper::body::Incoming>,
 ) -> Result<StudentInfo, HandlerResponse> {
-    println!("{:?}", req.headers());
     let token = match get_cookie(req, STUDENT_TOKEN.to_string()) {
         Some(token) => token,
         None => return Err(response_empty(StatusCode::UNAUTHORIZED)),
     };
-    println!("token: {}", token);
     let result = sqlx::query_as!(
         StudentInfo,
         "SELECT class_id, student_id FROM student_token WHERE token=$1",
