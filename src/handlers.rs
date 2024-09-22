@@ -12,6 +12,10 @@ mod student;
 pub async fn route(
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>> {
+    if req.method() == &Method::OPTIONS {
+        return utils::response_empty(StatusCode::OK);
+    }
+
     match (req.method(), req.uri().path()) {
         (&Method::POST, "/classroom/create") => classroom::handler_create(req).await,
         (&Method::GET, "/classroom/get_all") => classroom::handler_get_all(req).await,
