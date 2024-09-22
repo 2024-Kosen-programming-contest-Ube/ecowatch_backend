@@ -5,6 +5,7 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct Config {
     pub listen_address: String,
+    pub cookie_domain: String,
     pub database_url: String,
     pub sensor_interval: u64, // msec
 }

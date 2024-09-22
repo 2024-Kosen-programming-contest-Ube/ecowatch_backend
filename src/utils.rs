@@ -106,6 +106,7 @@ pub fn create_cookie(key: String, value: String) -> String {
         .secure(false)
         .http_only(true)
         .max_age(cookie::time::Duration::days(365))
+        .domain(CONFIG.cookie_domain.as_str())
         .build();
     cookie.encoded().to_string()
 }
