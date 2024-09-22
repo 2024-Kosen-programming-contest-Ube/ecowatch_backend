@@ -5,7 +5,7 @@ use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier};
 use bytes::{Buf, Bytes};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
-use cookie::Cookie;
+use cookie::{Cookie, SameSite};
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Empty, Full};
 use hyper::header::COOKIE;
@@ -101,12 +101,18 @@ pub fn verify_password(password: String, hash: String) -> Result<bool> {
 }
 
 pub fn create_cookie(key: String, value: String) -> String {
+    let samesite = if CONFIG.cookie_cross {
+        SameSite::None
+    } else {
+        SameSite::Strict
+    };
     let cookie = Cookie::build((key, value))
         .path("/")
-        .secure(false)
+        .secure(CONFIG.cookie_cross)
         .http_only(true)
         .max_age(cookie::time::Duration::days(365))
         .domain(CONFIG.cookie_domain.as_str())
+        .same_site(samesite)
         .build();
     cookie.encoded().to_string()
 }
