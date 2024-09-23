@@ -219,7 +219,7 @@ pub struct Sensor {
     is_people: bool,
     lux: f64,
     useairconditioner: bool,
-    airconditionaer_time: String,
+    airconditioner_time: String,
 }
 
 pub fn calc_airconditionaer_point(sensor: Sensor, duraton_msec: i64) -> f64 {
