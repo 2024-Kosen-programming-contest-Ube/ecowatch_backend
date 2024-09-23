@@ -218,7 +218,7 @@ pub struct Sensor {
     #[serde(alias = "isPeople")]
     is_people: bool,
     lux: f64,
-    useairconditionaer: bool,
+    useairconditioner: bool,
     airconditionaer_time: String,
 }
 
@@ -238,9 +238,9 @@ pub fn calc_airconditionaer_point(sensor: Sensor, duraton_msec: i64) -> f64 {
         false
     };
 
-    let should_add_point = if satisfy_airconditionaer && sensor.useairconditionaer {
+    let should_add_point = if satisfy_airconditionaer && sensor.useairconditioner {
         true
-    } else if !satisfy_airconditionaer && !sensor.useairconditionaer {
+    } else if !satisfy_airconditionaer && !sensor.useairconditioner {
         true
     } else {
         false
