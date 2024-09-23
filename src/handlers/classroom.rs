@@ -187,6 +187,7 @@ struct DayStatus {
     class_id: String,
     point: i64,
     attend: Option<i64>,
+    leftovers: Option<i64>,
     date: String,
 }
 
@@ -255,47 +256,17 @@ pub async fn handler_regist_attendance(
         }
     };
 
-    let result = sqlx::query_scalar!(
-        "SELECT EXISTS(SELECT * FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime'))",
-        class_id
+    let result = sqlx::query!(
+        "INSERT INTO day_status values ($1, 0, $2, date('now', 'localtime'), NULL) ON CONFLICT(class_id, date) DO UPDATE SET attend = $2",
+        class_id,
+        req_data.attendees
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await;
 
-    let exist_status = match result {
-        Ok(v) => v,
-        Err(e) => {
-            println!("{}", e.to_string());
-            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-
-    if exist_status > 0 {
-        let result = sqlx::query!(
-            "UPDATE day_status SET attend = $1 WHERE class_id=$2 AND date=date('now', 'localtime')",
-            req_data.attendees,
-            class_id
-        )
-        .execute(pool)
-        .await;
-
-        if let Err(e) = result {
-            println!("{}", e.to_string());
-            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    } else {
-        let result = sqlx::query!(
-            "INSERT INTO day_status VALUES($1, 0, $2, date('now', 'localtime'))",
-            class_id,
-            req_data.attendees
-        )
-        .execute(pool)
-        .await;
-
-        if let Err(e) = result {
-            println!("{}", e.to_string());
-            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
-        }
+    if let Err(e) = result {
+        eprintln!("{}", e);
+        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     utils::response_empty(StatusCode::OK)
@@ -453,41 +424,24 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
     };
 
     let point_diff = 10;
-    let mut result_point = 0;
 
-    match point_option {
-        Some(point) => {
-            result_point = point + point_diff;
-            result_point = std::cmp::min(900, result_point);
-            let result = sqlx::query!(
-                "UPDATE day_status SET point = $1 WHERE class_id=$2 AND date=date('now', 'localtime')",
-                result_point,
-                class_id
-            )
-            .execute(pool)
-            .await;
-
-            if let Err(e) = result {
-                println!("{}", e.to_string());
-                return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
-            }
-        }
-        None => {
-            result_point = std::cmp::max(0, point_diff);
-            let result = sqlx::query!(
-                "INSERT INTO day_status VALUES($1, $2, NULL, date('now', 'localtime'))",
-                class_id,
-                result_point
-            )
-            .execute(pool)
-            .await;
-
-            if let Err(e) = result {
-                println!("{}", e.to_string());
-                return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
-            }
-        }
+    let result_point = match point_option {
+        Some(point) => std::cmp::min(900, point + point_diff),
+        None => std::cmp::max(0, point_diff),
     };
+
+    let result = sqlx::query!(
+        "INSERT INTO day_status values ($1, $2, NULL, date('now', 'localtime'), NULL) ON CONFLICT(class_id, date) DO UPDATE SET point = $2",
+        class_id,
+        result_point
+    )
+    .execute(pool)
+    .await;
+
+    if let Err(e) = result {
+        eprintln!("{}", e);
+        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+    }
 
     utils::response_struct_json::<SensorResponse>(
         StatusCode::OK,
