@@ -1,9 +1,10 @@
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::Utc;
 use hyper::{
     header::{HeaderName, HeaderValue, SET_COOKIE},
     Request, StatusCode,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use ulid::Ulid;
 
 use crate::{
@@ -222,6 +223,39 @@ pub async fn handler_get_now_status(req: Request<hyper::body::Incoming>) -> util
     };
 
     utils::response_struct_json::<DayStatus>(StatusCode::OK, &day_status)
+}
+
+pub async fn handler_day_status_history(
+    req: Request<hyper::body::Incoming>,
+) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let class_id = {
+        let result = utils::get_class_id_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
+    };
+
+    let result = sqlx::query_as!(
+        DayStatus,
+        "SELECT * FROM day_status WHERE class_id=$1 AND date >= date('now', 'localtime', '-30 days')",
+        class_id
+    )
+    .fetch_all(pool)
+    .await;
+
+    let day_status_list = match result {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+    println!("c: {}", day_status_list.len());
+
+    utils::response_json(StatusCode::OK, json!(day_status_list).to_string())
 }
 
 #[derive(Deserialize)]

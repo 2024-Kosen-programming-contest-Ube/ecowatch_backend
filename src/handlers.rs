@@ -22,6 +22,9 @@ pub async fn route(
         (&Method::POST, "/classroom/login") => classroom::handler_login(req).await,
         (&Method::POST, "/classroom/logout") => classroom::handler_logout(req).await,
         (&Method::GET, "/classroom/get_now_status") => classroom::handler_get_now_status(req).await,
+        (&Method::GET, "/classroom/get_status_history") => {
+            classroom::handler_day_status_history(req).await
+        }
         (&Method::GET, "/classroom/point") => classroom::handler_point(req).await,
         (&Method::POST, "/classroom/regist_attendance") => {
             classroom::handler_regist_attendance(req).await
