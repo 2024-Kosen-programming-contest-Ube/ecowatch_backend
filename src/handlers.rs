@@ -26,6 +26,9 @@ pub async fn route(
         (&Method::POST, "/classroom/regist_attendance") => {
             classroom::handler_regist_attendance(req).await
         }
+        (&Method::POST, "/classroom/regist_leftovers") => {
+            classroom::handler_regist_leftovers(req).await
+        }
         (&Method::POST, "/classroom/sensor") => classroom::handler_sensor(req).await,
         (&Method::POST, "/school/create") => school::handler_create(req).await,
         (&Method::POST, "/student/login") => student::handler_login(req).await,

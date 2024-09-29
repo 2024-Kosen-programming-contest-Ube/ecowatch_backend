@@ -272,6 +272,54 @@ pub async fn handler_regist_attendance(
     utils::response_empty(StatusCode::OK)
 }
 
+#[derive(Deserialize)]
+struct RegistLeftoversRequest {
+    leftovers: i64,
+}
+
+pub async fn handler_regist_leftovers(
+    req: Request<hyper::body::Incoming>,
+) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let class_id = {
+        let result = utils::get_class_id_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
+    };
+
+    let req_data = {
+        let result = utils::parse_req_json::<RegistLeftoversRequest>(req).await;
+        match result {
+            Ok(r) => r,
+            Err(e) => {
+                println!("{}", e.to_string());
+                return utils::response_error_message(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid params".to_string(),
+                );
+            }
+        }
+    };
+
+    let result = sqlx::query!(
+        "INSERT INTO day_status values ($1, 0, NULL, date('now', 'localtime'), $2) ON CONFLICT(class_id, date) DO UPDATE SET leftovers = $2",
+        class_id,
+        req_data.leftovers
+    )
+    .execute(pool)
+    .await;
+
+    if let Err(e) = result {
+        eprintln!("{}", e);
+        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    utils::response_empty(StatusCode::OK)
+}
+
 #[derive(Serialize)]
 struct Classroom {
     id: String,
