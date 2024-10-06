@@ -137,3 +137,40 @@ pub async fn handler_checklist(req: Request<hyper::body::Incoming>) -> utils::Ha
 
     utils::response_empty(StatusCode::OK)
 }
+
+#[derive(Serialize)]
+struct PointResponse {
+    point: i64,
+}
+
+pub async fn handler_point(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let student_info = {
+        let result = utils::get_student_info_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
+    };
+
+    let result = sqlx::query_scalar!(
+        "SELECT point FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",
+        student_info.class_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    let point = match result {
+        Ok(v) => match v {
+            Some(_point) => _point,
+            None => return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR),
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    utils::response_struct_json(StatusCode::OK, &PointResponse { point })
+}

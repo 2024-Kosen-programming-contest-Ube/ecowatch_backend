@@ -37,6 +37,7 @@ pub async fn route(
         (&Method::POST, "/student/login") => student::handler_login(req).await,
         (&Method::GET, "/student/exist_checklist") => student::handler_exist_checklist(req).await,
         (&Method::POST, "/student/checklist") => student::handler_checklist(req).await,
+        (&Method::GET, "/student/point") => student::handler_point(req).await,
 
         // Return the 404 Not Found for other routes.
         _ => utils::response_empty(StatusCode::NOT_FOUND),
