@@ -33,6 +33,7 @@ pub async fn route(
             classroom::handler_regist_leftovers(req).await
         }
         (&Method::POST, "/classroom/sensor") => classroom::handler_sensor(req).await,
+        (&Method::POST, "/classroom/set_point") => classroom::handler_setpoint(req).await, // For demo
         (&Method::POST, "/school/create") => school::handler_create(req).await,
         (&Method::POST, "/student/login") => student::handler_login(req).await,
         (&Method::GET, "/student/exist_checklist") => student::handler_exist_checklist(req).await,

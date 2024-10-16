@@ -602,3 +602,49 @@ pub async fn handler_point(req: Request<hyper::body::Incoming>) -> utils::Handle
         },
     )
 }
+
+#[derive(Deserialize)]
+struct SetPointRequest {
+    point: i64,
+}
+
+pub async fn handler_setpoint(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
+    let pool = &database::get_pool().await;
+
+    let class_id = {
+        let result = utils::get_class_id_from_token(pool, &req).await;
+        match result {
+            Ok(v) => v,
+            Err(res) => return res,
+        }
+    };
+
+    let req_data = {
+        let result = utils::parse_req_json::<SetPointRequest>(req).await;
+        match result {
+            Ok(r) => r,
+            Err(e) => {
+                println!("{}", e.to_string());
+                return utils::response_error_message(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid params".to_string(),
+                );
+            }
+        }
+    };
+
+    let result = sqlx::query!(
+        "UPDATE day_status SET point=$1 WHERE class_id=$2 AND date=date('now', 'localtime')",
+        req_data.point,
+        class_id
+    )
+    .execute(pool)
+    .await;
+
+    if let Err(e) = result {
+        println!("{}", e.to_string());
+        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    utils::response_empty(StatusCode::OK)
+}
