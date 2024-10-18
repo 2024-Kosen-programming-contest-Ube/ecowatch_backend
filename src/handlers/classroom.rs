@@ -9,7 +9,7 @@ use ulid::Ulid;
 
 use crate::{
     database,
-    utils::{self, Sensor},
+    utils::{self, calc_leftovers_point, DayStatus, Sensor},
 };
 
 #[derive(Deserialize)]
@@ -183,15 +183,6 @@ pub async fn handler_logout(_: Request<hyper::body::Incoming>) -> utils::Handler
     Ok(response)
 }
 
-#[derive(Serialize)]
-struct DayStatus {
-    class_id: String,
-    point: i64,
-    attend: Option<i64>,
-    leftovers: Option<i64>,
-    date: String,
-}
-
 pub async fn handler_get_now_status(req: Request<hyper::body::Incoming>) -> utils::HandlerResponse {
     let pool = &database::get_pool().await;
 
@@ -290,6 +281,31 @@ pub async fn handler_regist_attendance(
         }
     };
 
+    let result = sqlx::query_as!(
+        DayStatus,
+        "SELECT * FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",
+        class_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    let prev_status = match result {
+        Ok(v) => match v {
+            Some(_prev_status) => _prev_status,
+            None => DayStatus {
+                class_id: "".to_string(),
+                point: 0,
+                attend: None,
+                leftovers: None,
+                date: "".to_string(),
+            },
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
     let result = sqlx::query!(
         "INSERT INTO day_status values ($1, 0, $2, date('now', 'localtime'), NULL) ON CONFLICT(class_id, date) DO UPDATE SET attend = $2",
         class_id,
@@ -300,6 +316,42 @@ pub async fn handler_regist_attendance(
 
     if let Err(e) = result {
         eprintln!("{}", e);
+        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    let result = sqlx::query_as!(
+        DayStatus,
+        "SELECT * FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",
+        class_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    let status = match result {
+        Ok(v) => match v {
+            Some(_prev_status) => _prev_status,
+            None => return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR),
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let point = std::cmp::max(
+        0,
+        calc_leftovers_point(&prev_status, &status) + status.point,
+    );
+
+    let result = sqlx::query!(
+        "UPDATE day_status SET point = $1 WHERE class_id=$2 AND date=date('now', 'localtime')",
+        point,
+        class_id
+    )
+    .execute(pool)
+    .await;
+
+    if result.is_err() {
         return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
@@ -338,6 +390,31 @@ pub async fn handler_regist_leftovers(
         }
     };
 
+    let result = sqlx::query_as!(
+        DayStatus,
+        "SELECT * FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",
+        class_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    let prev_status = match result {
+        Ok(v) => match v {
+            Some(_prev_status) => _prev_status,
+            None => DayStatus {
+                class_id: "".to_string(),
+                point: 0,
+                attend: None,
+                leftovers: None,
+                date: "".to_string(),
+            },
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
     let result = sqlx::query!(
         "INSERT INTO day_status values ($1, 0, NULL, date('now', 'localtime'), $2) ON CONFLICT(class_id, date) DO UPDATE SET leftovers = $2",
         class_id,
@@ -348,6 +425,42 @@ pub async fn handler_regist_leftovers(
 
     if let Err(e) = result {
         eprintln!("{}", e);
+        return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    let result = sqlx::query_as!(
+        DayStatus,
+        "SELECT * FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",
+        class_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    let status = match result {
+        Ok(v) => match v {
+            Some(_prev_status) => _prev_status,
+            None => return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR),
+        },
+        Err(e) => {
+            println!("{}", e.to_string());
+            return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let point = std::cmp::max(
+        0,
+        calc_leftovers_point(&prev_status, &status) + status.point,
+    );
+
+    let result = sqlx::query!(
+        "UPDATE day_status SET point = $1 WHERE class_id=$2 AND date=date('now', 'localtime')",
+        point,
+        class_id
+    )
+    .execute(pool)
+    .await;
+
+    if result.is_err() {
         return utils::response_empty(StatusCode::INTERNAL_SERVER_ERROR);
     }
 

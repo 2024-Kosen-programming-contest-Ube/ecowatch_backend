@@ -257,7 +257,7 @@ pub fn calc_airconditionaer_point(sensor: &Sensor, duraton_msec: i64) -> i64 {
         i64::clamp(duraton_msec, 0, CONFIG.sensor_interval as i64) as f64
     );
     println!("co2p:{} n:{} duration:{}", co2p, n, duraton_msec);
-    let point = co2p * (10.0 - (discomfort_index - 67.5).abs()) * n * 100.0;
+    let point = co2p * (10.0 - (discomfort_index - 69.5).abs()) * n * 10.0;
     if point > 0.5 {
         point.ceil() as i64
     } else {
@@ -272,4 +272,32 @@ pub fn calc_lux_point(sensor: &Sensor, duraton_msec: i64) -> i64 {
     } else {
         return 0;
     }
+}
+
+#[derive(Serialize)]
+pub struct DayStatus {
+    pub class_id: String,
+    pub point: i64,
+    pub attend: Option<i64>,
+    pub leftovers: Option<i64>,
+    pub date: String,
+}
+
+pub fn calc_leftovers_point(prev_daystatus: &DayStatus, daystatus: &DayStatus) -> i64 {
+    let prev_point = if prev_daystatus.attend.is_none() || prev_daystatus.leftovers.is_none() {
+        0
+    } else {
+        (((1030.0 * prev_daystatus.attend.unwrap() as f64) / 30.0
+            - prev_daystatus.leftovers.unwrap() as f64)
+            * 2.501
+            * (1.0 / 10.0)) as i64
+    };
+
+    let current_point = (((1030.0 * daystatus.attend.unwrap() as f64) / 30.0
+        - daystatus.leftovers.unwrap() as f64)
+        * 2.501
+        * (1.0 / 10.0)) as i64;
+
+    println!("left c:{} prev:{}", current_point, prev_point);
+    current_point - prev_point
 }
