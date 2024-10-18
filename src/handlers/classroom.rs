@@ -487,8 +487,11 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
     }
 
     // Calc point
-    let airconditionaer_point = utils::calc_airconditionaer_point(req_data, time_diff_msec);
+    let airconditionaer_point = utils::calc_airconditionaer_point(&req_data, time_diff_msec);
     println!("airp :{}", airconditionaer_point);
+
+    let lux_point = utils::calc_lux_point(&req_data, time_diff_msec);
+    println!("luxp :{}", lux_point);
 
     let result = sqlx::query_scalar!(
         "SELECT point FROM day_status WHERE class_id=$1 AND date=date('now', 'localtime')",
@@ -505,10 +508,11 @@ pub async fn handler_sensor(req: Request<hyper::body::Incoming>) -> utils::Handl
         }
     };
 
-    let point_diff = 10;
+    let point_diff = airconditionaer_point;
 
     let result_point = match point_option {
-        Some(point) => std::cmp::min(900, point + point_diff),
+        // Some(point) => std::cmp::min(900, point + point_diff),
+        Some(point) => std::cmp::max(0, point + point_diff),
         None => std::cmp::max(0, point_diff),
     };
 

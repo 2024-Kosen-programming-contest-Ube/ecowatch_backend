@@ -222,37 +222,54 @@ pub struct Sensor {
     airconditioner_time: String,
 }
 
-pub fn calc_airconditionaer_point(sensor: Sensor, duraton_msec: i64) -> f64 {
+pub fn calc_airconditionaer_point(sensor: &Sensor, duraton_msec: i64) -> i64 {
     let discomfort_index = 0.81 * sensor.temperature
         + 0.01 * sensor.humidity * (0.99 * sensor.temperature - 14.3)
         + 46.3;
 
     // Check satisfy air conditioner usage standards
-    let satisfy_airconditionaer = if sensor.is_people == false {
-        false
-    } else if sensor.temperature < 18.0 || sensor.temperature > 28.0 {
-        true
-    } else if discomfort_index < 60.0 || discomfort_index > 75.0 {
-        true
-    } else {
-        false
-    };
+    // let satisfy_airconditionaer = if sensor.is_people == false {
+    //     false
+    // } else if sensor.temperature < 18.0 || sensor.temperature > 28.0 {
+    //     true
+    // } else if discomfort_index < 60.0 || discomfort_index > 75.0 {
+    //     true
+    // } else {
+    //     false
+    // };
 
-    let should_add_point = if satisfy_airconditionaer && sensor.useairconditioner {
-        true
-    } else if !satisfy_airconditionaer && !sensor.useairconditioner {
-        true
-    } else {
-        false
-    };
+    // let should_add_point = if satisfy_airconditionaer && sensor.useairconditioner {
+    //     true
+    // } else if !satisfy_airconditionaer && !sensor.useairconditioner {
+    //     true
+    // } else {
+    //     false
+    // };
 
-    if !should_add_point {
-        return 0.0;
-    }
+    // if !should_add_point {
+    //     return 0.0;
+    // }
 
     let co2p = 1500.0 / 1000.0 * 0.378;
-    let n = (std::cmp::max(duraton_msec, CONFIG.sensor_interval as i64) as f64 / (1000.0 * 60.0))
-        / 60.0;
+    let n = i64::clamp(duraton_msec, 0, CONFIG.sensor_interval as i64) as f64 / (1000.0 * 60.0);
+    println!(
+        "read d {}",
+        i64::clamp(duraton_msec, 0, CONFIG.sensor_interval as i64) as f64
+    );
     println!("co2p:{} n:{} duration:{}", co2p, n, duraton_msec);
-    co2p * (10.0 - (discomfort_index - 67.5).abs()) * n * 100.0
+    let point = co2p * (10.0 - (discomfort_index - 67.5).abs()) * n * 100.0;
+    if point > 0.5 {
+        point.ceil() as i64
+    } else {
+        return 0;
+    }
+}
+
+pub fn calc_lux_point(sensor: &Sensor, duraton_msec: i64) -> i64 {
+    let n = i64::clamp(duraton_msec, 0, CONFIG.sensor_interval as i64) as f64 / (1000.0 * 60.0);
+    if sensor.is_people == false && sensor.lux < 30.0 {
+        return (5.4 * 0.378 * 2.0 * n) as i64;
+    } else {
+        return 0;
+    }
 }
