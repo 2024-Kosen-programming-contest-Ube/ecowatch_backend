@@ -250,14 +250,14 @@ pub fn calc_airconditionaer_point(sensor: &Sensor, duraton_msec: i64) -> i64 {
     //     return 0.0;
     // }
 
-    let co2p = 1500.0 / 1000.0 * 0.378;
+    let co2p = 1.5 * 0.378;
     let n = i64::clamp(duraton_msec, 0, CONFIG.sensor_interval as i64) as f64 / (1000.0 * 60.0);
     println!(
         "read d {}",
         i64::clamp(duraton_msec, 0, CONFIG.sensor_interval as i64) as f64
     );
     println!("co2p:{} n:{} duration:{}", co2p, n, duraton_msec);
-    let point = co2p * (10.0 - (discomfort_index - 69.5).abs()) * n * 10.0;
+    let point = co2p * (10.0 - (discomfort_index - 69.5).abs()) * n;
     if point > 0.5 {
         point.ceil() as i64
     } else {
